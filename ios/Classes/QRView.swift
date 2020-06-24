@@ -13,21 +13,50 @@ public class QRView:NSObject,FlutterPlatformView {
     var scanner: MTBBarcodeScanner?
     var registrar: FlutterPluginRegistrar
     var channel: FlutterMethodChannel
-    
+
     public init(withFrame frame: CGRect, withRegistrar registrar: FlutterPluginRegistrar, withId id: Int64){
         self.registrar = registrar
         previewView = UIView(frame: frame)
         channel = FlutterMethodChannel(name: "net.touchcapture.qr.flutterqr/qrview_\(id)", binaryMessenger: registrar.messenger())
     }
-    
+
     func isCameraAvailable(success: Bool) -> Void {
         if success {
             do {
                 try scanner?.startScanning(resultBlock: { [weak self] codes in
                     if let codes = codes {
                         for code in codes {
+                            var typeString: String;
+                            switch(code.type) {
+                                case AVMetadataObject.ObjectType.aztec:
+                                   typeString = "AZTEC"
+                                case AVMetadataObject.ObjectType.code39:
+                                    typeString = "CODE_39"
+                                case AVMetadataObject.ObjectType.code93:
+                                    typeString = "CODE_93"
+                                case AVMetadataObject.ObjectType.code128:
+                                    typeString = "CODE_128"
+                                case AVMetadataObject.ObjectType.dataMatrix:
+                                    typeString = "DATA_MATRIX"
+                                case AVMetadataObject.ObjectType.ean8:
+                                    typeString = "EAN_8"
+                                case AVMetadataObject.ObjectType.ean13:
+                                    typeString = "EAN_13"
+                                case AVMetadataObject.ObjectType.itf14:
+                                    typeString = "ITF"
+                                case AVMetadataObject.ObjectType.pdf417:
+                                    typeString = "PDF_417"
+                                case AVMetadataObject.ObjectType.qr:
+                                    typeString = "QR_CODE"
+                                case AVMetadataObject.ObjectType.upce:
+                                    typeString = "UPC_E"
+                                default:
+                                    return
+                            }
+
                             guard let stringValue = code.stringValue else { continue }
-                            self?.channel.invokeMethod("onRecognizeQR", arguments: stringValue)
+                            let result = ["code": stringValue, "type": typeString]
+                            self?.channel.invokeMethod("onRecognizeQR", arguments: result)
                         }
                     }
                 })
@@ -38,7 +67,7 @@ public class QRView:NSObject,FlutterPlatformView {
             UIAlertView(title: "Scanning Unavailable", message: "This app does not have permission to access the camera", delegate: nil, cancelButtonTitle: nil, otherButtonTitles: "Ok").show()
         }
     }
-    
+
     public func view() -> UIView {
         channel.setMethodCallHandler({
             [weak self] (call: FlutterMethodCall, result: FlutterResult) -> Void in
@@ -61,13 +90,13 @@ public class QRView:NSObject,FlutterPlatformView {
         })
         return previewView
     }
-    
+
     func setDimensions(width: Double, height: Double) -> Void {
        previewView.frame = CGRect(x: 0, y: 0, width: width, height: height)
        scanner = MTBBarcodeScanner(previewView: previewView)
        MTBBarcodeScanner.requestCameraPermission(success: isCameraAvailable)
     }
-    
+
     func flipCamera(){
         if let sc: MTBBarcodeScanner = scanner {
             if sc.hasOppositeCamera() {
@@ -75,7 +104,7 @@ public class QRView:NSObject,FlutterPlatformView {
             }
         }
     }
-    
+
     func toggleFlash(){
         if let sc: MTBBarcodeScanner = scanner {
             if sc.hasTorch() {
@@ -83,7 +112,7 @@ public class QRView:NSObject,FlutterPlatformView {
             }
         }
     }
-    
+
     func pauseCamera() {
         if let sc: MTBBarcodeScanner = scanner {
             if sc.isScanning() {
@@ -91,7 +120,7 @@ public class QRView:NSObject,FlutterPlatformView {
             }
         }
     }
-    
+
     func resumeCamera() {
         if let sc: MTBBarcodeScanner = scanner {
             if !sc.isScanning() {
